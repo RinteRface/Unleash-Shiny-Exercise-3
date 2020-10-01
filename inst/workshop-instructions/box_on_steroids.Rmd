@@ -1,0 +1,147 @@
+---
+title: "box_on_steroids"
+author: "David Granjon"
+date: "9/28/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(shiny)
+library(shinyWidgets)
+library(charpente)
+```
+
+## {shinydashboard} boxes on steroids
+The Shiny input binding system is too convenient to be only used it for input elements. In `{shinydashboard}`, you may know the `box` function. Boxes are containers with a title, body, footer, as well as optional elements. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an `inputId` parameter to the box function. You may inspect the code here.
+
+### AdminLTE2 exploration
+`{shinydashboard}` is built on top of the AdminLTE2 admin [template](https://adminlte.io/themes/AdminLTE/index2.html). The demonstration gives a overview of the whole capabilities. 
+
+1. Navigate to the [template](https://adminlte.io/themes/AdminLTE/index2.html) demo and inspect the HTML structure of a box.
+2. What happens to the class when the box is collapsed? Closed? **Hint**: this will be useful for the input binding development!
+
+
+### Develop the input binding
+Below, we'll design the `updateBox` function. 
+
+4. Replace the `...` by the appropriate elements.
+
+```{r update-box}
+updateBox <- function(...) {
+  # your logic
+  ...$...(...)
+}
+```
+
+5. Let's consider the following input binding skeleton. `{charpente}` provide tools to create input binding boilerplate, through the `create_input_binding`. Apply it to create the `boxBinding.js` script. Once created, replace all `...` by the appropriate methods and names.
+
+```js
+var ... = new Shiny.InputBinding();
+  $.extend(..., {
+    ...: function(scope) {
+      // your code
+    },
+    ...: function(el) {
+      // your code
+    },
+    ...: function(el, value) {
+      // your code
+    },
+    ...: function(el, data) {
+      // your code
+    },
+    ...: function(el, callback) {
+      // your code
+    },
+    unsubscribe: function(el) {
+      $(el).off(".boxInputBinding");
+    }
+  });
+  
+  // registration
+  Shiny.inputBindings.register(..., '...');
+```
+
+6. Create an HTML dependency pointing to a script `boxBinding.js`. This will be necessary to test the developed code.
+7. The first step of the binding is the `find` method. Recall what it is supposed to do, then write the corresponding code. **Hint**: `scope` refers to the document. In jQuery, we use `find` to find all descendants of the selector, matching the condition. For instance `$(document).find(".titi")` will find all elements having the class `titi`. Importantly, if you apply `find` on a child element, it won't be able to find items in the parents. `find` **must** call `return` at the end of its definition.
+
+8. Implement the `getValue` method. **Hint**: `hasClass` allows to check whether the selected elements has the given class. `getValue` **must** call `return` at the end of its definition.
+
+9. It's time to create the R component. The `box2` function is alread available in the `./R` folder. Add it the *id* parameter necessary to link the HTML element to the JS binding. Once done add the JS dependency to the `box2` element. This will allow the component to be standalone (it includes its own dependencies).
+
+```{r box-binding-test}
+ui <- fluidPage(
+  # import shinydashboard deps without the need of the dashboard template
+  useShinydashboard(),
+
+  tags$style("body { background-color: ghostwhite};"),
+
+  br(),
+  box2(
+   title = textOutput("box_state"),
+   "Box body",
+   id = "mybox",
+   collapsible = TRUE,
+   plotOutput("plot")
+  ),
+  actionButton("toggle_box", "Toggle Box", class = "bg-success")
+ )
+
+ server <- function(input, output, session) {
+  output$plot <- renderPlot({
+    req(!input$mybox$collapsed)
+    plot(rnorm(200))
+  })
+
+  output$box_state <- renderText({
+    state <- if (input$mybox$collapsed) "collapsed" else "uncollapsed"
+    paste("My box is", state)
+  })
+
+  observeEvent(input$toggle_box, {
+    updateBox2("mybox")
+  })
+
+ }
+
+ shinyApp(ui, server)
+```
+
+Why isn't the `updateBox2` doing anything?
+
+10. The `subscribe` method gives instruction to Shiny on when to update the current input value. This is a good place for an **event listener**! Implement `subscribe` and check if the button works as expected. Hint: as a reminder an event listener is created with the following pattern.
+
+```js
+$("selector").on("event_name", function(e) {
+  // your logic
+});
+```
+
+The will be 2 event listeners:
+  - For manual actions (`click`)
+  - For programmatically triggered changes (`change`)
+  
+A last advise: the box has an animation delay (500ms) according to the documentation. The `setTimeout` JS function allows to delay the execution of any JS code located inside by the specified amount of milliseconds. See the pattern below that you may try with [repl.it](https://repl.it/languages/nodejs):
+
+```js
+var a = 1;
+setTimeout(function() {
+  a = 2;
+  // printed after 1 second
+  console.log(a);
+}, 1000);
+// printed immediately
+console.log(a);
+```
+  
+11. Let's go further and try to programmatically update the box. We need 2 elements:
+
+  - Send information from R to JS with the `session$sendInputMessage` method. This is already done since question 4
+  - Receive an treat information in the client (JS) with `reveiveMessage` and `setValue`. Interestingly, since the input binding is an object, you may create any other method
+  
+**Hint**: `AdminLTE2` provides a plug and play `toggleBox` method that you may use inside `setValue`.
+
+12. Test the code
+
+Congrats, you've just created your first input binding!
