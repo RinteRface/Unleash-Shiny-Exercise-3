@@ -9,6 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(shiny)
 library(shinyWidgets)
+library(shinydashboard)
 library(charpente)
 ```
 
@@ -25,7 +26,7 @@ The Shiny input binding system is too convenient to be only used it for input el
 ### Develop the input binding
 Below, we'll design the `updateBox` function. 
 
-4. Replace the `...` by the appropriate elements.
+4. In the `.R/box2.R` script, create an `updateBox` function based on the following code chunk and replace the `...` by the appropriate elements.
 
 ```{r update-box}
 updateBox <- function(...) {
@@ -34,43 +35,18 @@ updateBox <- function(...) {
 }
 ```
 
-5. Let's consider the following input binding skeleton. `{charpente}` provide tools to create input binding boilerplate, through the `create_input_binding`. Apply it to create the `boxBinding.js` script. Once created, replace all `...` by the appropriate methods and names.
+5. `{charpente}` provide tools to create input binding boilerplate, through the `create_input_binding`. Run `create_input_binding("boxBinding")` in the R console.
 
-```js
-var ... = new Shiny.InputBinding();
-  $.extend(..., {
-    ...: function(scope) {
-      // your code
-    },
-    ...: function(el) {
-      // your code
-    },
-    ...: function(el, value) {
-      // your code
-    },
-    ...: function(el, data) {
-      // your code
-    },
-    ...: function(el, callback) {
-      // your code
-    },
-    unsubscribe: function(el) {
-      $(el).off(".boxInputBinding");
-    }
-  });
-  
-  // registration
-  Shiny.inputBindings.register(..., '...');
-```
+6. Create an HTML dependency pointing to the previously created script, that is `boxBinding.js`. This will be necessary to test the developed code. As a reminder, we may use `create_custom_dependency("box", script = "boxBinding.js")`.
 
-6. Create an HTML dependency pointing to a script `boxBinding.js`. This will be necessary to test the developed code.
 7. The first step of the binding is the `find` method. Recall what it is supposed to do, then write the corresponding code. **Hint**: `scope` refers to the document. In jQuery, we use `find` to find all descendants of the selector, matching the condition. For instance `$(document).find(".titi")` will find all elements having the class `titi`. Importantly, if you apply `find` on a child element, it won't be able to find items in the parents. `find` **must** call `return` at the end of its definition.
 
 8. Implement the `getValue` method. **Hint**: `hasClass` allows to check whether the selected elements has the given class. `getValue` **must** call `return` at the end of its definition.
 
-9. It's time to create the R component. The `box2` function is alread available in the `./R` folder. Add it the *id* parameter necessary to link the HTML element to the JS binding. Once done add the JS dependency to the `box2` element. This will allow the component to be standalone (it includes its own dependencies).
+9. It's time to create the R component. As we don't have unlimited time, the `box2` function is already available in the `./R` folder. Add it the *id* parameter necessary to link the HTML element to the JS binding. Once done add the JS dependency to the `fluidPage` element, using newly created the `add_box_deps` function.
 
 ```{r box-binding-test}
+devtools::load_all()
 ui <- fluidPage(
   # import shinydashboard deps without the need of the dashboard template
   useShinydashboard(),
@@ -100,7 +76,7 @@ ui <- fluidPage(
   })
 
   observeEvent(input$toggle_box, {
-    updateBox2("mybox")
+    updateBox("mybox")
   })
 
  }
@@ -108,7 +84,7 @@ ui <- fluidPage(
  shinyApp(ui, server)
 ```
 
-Why isn't the `updateBox2` doing anything?
+Why isn't the `updateBox` doing anything?
 
 10. The `subscribe` method gives instruction to Shiny on when to update the current input value. This is a good place for an **event listener**! Implement `subscribe` and check if the button works as expected. Hint: as a reminder an event listener is created with the following pattern.
 
