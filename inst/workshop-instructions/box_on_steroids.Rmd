@@ -14,7 +14,7 @@ library(charpente)
 ```
 
 ## {shinydashboard} boxes on steroids
-The Shiny input binding system is too convenient to be only used it for input elements. In `{shinydashboard}`, you may know the `box` function. Boxes are containers with a title, body, footer, as well as optional elements. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes. Since an input value is unique, we must add an `inputId` parameter to the box function. You may inspect the code here.
+The Shiny input binding system is too convenient to be only used for input elements. In `{shinydashboard}`, you may know the `box` function. Boxes are containers with a title, body, footer, as well as optional elements. It would be nice to capture the state of the box in an input, so as to trigger other actions as soon as this input changes, or to programmatically change the state of the box from the server.
 
 ### AdminLTE2 exploration
 `{shinydashboard}` is built on top of the AdminLTE2 admin [template](https://adminlte.io/themes/AdminLTE/index2.html). The demonstration gives a overview of the whole capabilities. 
@@ -28,7 +28,7 @@ Below, we'll design the `updateBox` function.
 
 4. In the `.R/box2.R` script, create an `updateBox` function based on the following code chunk and replace the `...` by the appropriate elements.
 
-```{r update-box}
+```{r update-box, eval=FALSE}
 updateBox <- function(...) {
   # your logic
   ...$...(...)
@@ -37,15 +37,15 @@ updateBox <- function(...) {
 
 5. `{charpente}` provide tools to create input binding boilerplate, through the `create_input_binding`. Run `create_input_binding("boxBinding")` in the R console.
 
-6. Create an HTML dependency pointing to the previously created script, that is `boxBinding.js`. This will be necessary to test the developed code. As a reminder, we may use `create_custom_dependency("box", script = "boxBinding.js")`.
+6. Create an HTML dependency pointing to the previously created script, that is `boxBinding.js`. This will be necessary to test the developed code. As a reminder, we may use `create_custom_dependency("box", script = "input-boxBinding.js")`.
 
 7. The first step of the binding is the `find` method. Recall what it is supposed to do, then write the corresponding code. **Hint**: `scope` refers to the document. In jQuery, we use `find` to find all descendants of the selector, matching the condition. For instance `$(document).find(".titi")` will find all elements having the class `titi`. Importantly, if you apply `find` on a child element, it won't be able to find items in the parents. `find` **must** call `return` at the end of its definition.
 
-8. Implement the `getValue` method. **Hint**: `hasClass` allows to check whether the selected elements has the given class. `getValue` **must** call `return` at the end of its definition.
+8. Implement the `getValue` method. **Hint**: `hasClass` allows to check whether the selected elements has the given class. `getValue` **must** call `return` at the end of its definition. We'll return an **object** `return {collapsed: ...}` to be able to access `input$<box_id>$collapsed` on the R side.
 
 9. It's time to create the R component. As we don't have unlimited time, the `box2` function is already available in the `./R` folder. Add it the *id* parameter necessary to link the HTML element to the JS binding. Once done add the JS dependency to the `fluidPage` element, using newly created the `add_box_deps` function.
 
-```{r box-binding-test}
+```{r box-binding-test, eval=FALSE}
 devtools::load_all()
 ui <- fluidPage(
   # import shinydashboard deps without the need of the dashboard template
@@ -84,7 +84,7 @@ ui <- fluidPage(
  shinyApp(ui, server)
 ```
 
-Why isn't the `updateBox` doing anything?
+Try to manually toggle the box. What happens and why? Why isn't the `updateBox` doing anything?
 
 10. The `subscribe` method gives instruction to Shiny on when to update the current input value. This is a good place for an **event listener**! Implement `subscribe` and check if the button works as expected. Hint: as a reminder an event listener is created with the following pattern.
 
@@ -98,7 +98,7 @@ The will be 2 event listeners:
   - For manual actions (`click`)
   - For programmatically triggered changes (`change`)
   
-A last advise: the box has an animation delay (500ms) according to the documentation. The `setTimeout` JS function allows to delay the execution of any JS code located inside by the specified amount of milliseconds. See the pattern below that you may try with [repl.it](https://repl.it/languages/nodejs):
+A last advise: the box has an **animation delay** (500ms) according to the [documentation](https://adminlte.io/docs/2.4/js-box-widget). The `setTimeout` JS function allows to **delay the execution** of any JS code located inside by the specified amount of milliseconds. See the pattern below that you may try with [repl.it](https://repl.it/languages/nodejs):
 
 ```js
 var a = 1;
@@ -106,18 +106,30 @@ setTimeout(function() {
   a = 2;
   // printed after 1 second
   console.log(a);
-}, 1000);
+}, 2000);
 // printed immediately
 console.log(a);
 ```
   
-11. Let's go further and try to programmatically update the box. We need 2 elements:
+11. Let's go further and try to programmatically update the box. We need 3 elements:
 
-  - Send information from R to JS with the `session$sendInputMessage` method. This is already done since question 4
-  - Receive an treat information in the client (JS) with `reveiveMessage` and `setValue`. Interestingly, since the input binding is an object, you may create any other method
+  - Send information from R to JS with the `session$sendInputMessage` method. This is **already done** since question 4!
+  - Receive an treat information in the client (JS) with `reveiveMessage` and `setValue`. 
   
 **Hint**: `AdminLTE2` provides a plug and play `toggleBox` method that you may use inside `setValue`.
 
-12. Test the code
+12. Test the code. Why is the box collapsing but the input value still unchanged (in the box title)? 
 
-Congrats, you've just created your first input binding!
+13. We actually have to update `subscribe` to add an extra event listener. This event must be triggered in the `setValue` or `reveiveMessage` method. Add `$(el).trigger('change');` to `setValue` and update `subscribe` to listen to this new event. Hint: below is a starting point.
+
+```js
+$(el).on(..., function(event) {
+  setTimeout(function() {
+    callback();
+  }, 550);
+});
+```
+
+14. Check that everything works.
+
+Congrats, you've just created your first input binding!!!
